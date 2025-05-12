@@ -2,19 +2,30 @@
   <div class="news-page">
     <div class="user-panel">
       <div class="user-info">
-        Петр Петров
+        {{ userName }}
       </div>
       <button class="profile-button" @click="goToProfile">Профиль</button>
+      <button class="add-news-button" @click="goToAddNews">Добавить новость</button>
+      <button class="logout-button" @click="handleLogout">Выйти</button>
     </div>
     
     <div class="news-container">
       <div class="news-box">
         <h2 class="news-title">Новости</h2>
         
-        <div class="news-item" v-for="(news, index) in newsList" :key="index">
-          <h3 class="news-item-title">{{ news.title }}</h3>
-          <p class="news-item-content">{{ news.content }}</p>
-          <div class="news-item-date">{{ news.date }}</div>
+        <div class="news-item" v-for="(news, index) in filteredNews" :key="index">
+          <div v-if="!news.isUserBanned">
+            <h3 class="news-item-title">{{ news.title }}</h3>
+            <img v-if="news.image_url" :src="news.image_url" class="news-image" alt="News image">
+            <p class="news-item-content">{{ news.content }}</p>
+            <div class="news-item-footer">
+              <span class="news-item-author">{{ news.author }}</span>
+              <span class="news-item-date">{{ formatDate(news.created_at) }}</span>
+            </div>
+          </div>
+          <div v-else class="banned-user-message">
+            Аккаунт пользователя заблокирован
+          </div>
         </div>
       </div>
     </div>
@@ -26,28 +37,65 @@ export default {
   name: 'NewsView',
   data() {
     return {
-      newsList: [
-        {
-          title: 'Обновление системы',
-          content: 'Запланировано техническое обслуживание системы 15.05.2023 с 00:00 до 03:00.',
-          date: '10.05.2023'
-        },
-        {
-          title: 'Новые возможности',
-          content: 'Добавлена возможность редактирования профиля. Теперь вы можете изменить свои данные в любое время.',
-          date: '05.05.2023'
-        },
-        {
-          title: 'Добро пожаловать!',
-          content: 'Мы рады приветствовать вас в нашей системе. Надеемся, вам здесь понравится!',
-          date: '01.05.2023'
-        }
-      ]
+      newsList: [],
+      userName: localStorage.getItem('userName') || 'Пользователь'
     }
   },
+  computed: {
+    filteredNews() {
+      return this.newsList.map(news => {
+        return {
+          ...news,
+          isUserBanned: !news.is_active
+        };
+      });
+    }
+  },
+  async created() {
+    await this.fetchNews();
+  },
   methods: {
+    formatDate(dateString) {
+      const options = { year: 'numeric', month: 'long', day: 'numeric' };
+      return new Date(dateString).toLocaleDateString('ru-RU', options);
+    },
     goToProfile() {
       this.$router.push('/profile');
+    },
+    goToAddNews() {
+      this.$router.push('/add-news');
+    },
+    async fetchNews() {
+      try {
+        const response = await fetch('http://localhost:3000/api/posts');
+        
+        if (!response.ok) {
+          throw new Error(`Ошибка HTTP: ${response.status}`);
+        }
+
+        const data = await response.json();
+        
+        if (!Array.isArray(data)) {
+          throw new Error('Ожидался массив новостей');
+        }
+
+        this.newsList = data.map(post => ({
+          ...post,
+          author: post.author || 'Неизвестный автор',
+          is_active: post.is_active !== undefined ? post.is_active : true
+        }));
+        
+      } catch (error) {
+        console.error('Ошибка при загрузке новостей:', error);
+        alert('Не удалось загрузить новости. Пожалуйста, попробуйте позже.');
+      }
+    },
+    handleLogout() {
+      localStorage.removeItem('isAuthenticated');
+      localStorage.removeItem('userRole');
+      localStorage.removeItem('userId');
+      localStorage.removeItem('userName');
+      this.$router.push('/');
     }
   }
 }
@@ -146,5 +194,63 @@ export default {
   color: #888;
   font-size: 12px;
   text-align: right;
+}
+
+.add-news-button {
+  padding: 8px 16px;
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  cursor: pointer;
+  margin-left: 10px;
+}
+
+.add-news-button:hover {
+  background-color: #45a049;
+}
+
+.news-image {
+  max-width: 100%;
+  border-radius: 4px;
+  margin: 10px 0;
+}
+
+.news-item-footer {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 10px;
+}
+
+.news-item-author {
+  color: #666;
+  font-size: 14px;
+}
+
+.banned-user-message {
+  color: #ff4d4f;
+  font-style: italic;
+  padding: 20px;
+  text-align: center;
+}
+
+.button-group {
+  display: flex;
+  gap: 10px;
+}
+
+.logout-button {
+  padding: 8px 16px;
+  background-color: #f44336;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.logout-button:hover {
+  background-color: #d32f2f;
 }
 </style>

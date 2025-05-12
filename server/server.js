@@ -3,7 +3,38 @@ import express from 'express';
 import cors from 'cors';
 import { Sequelize, DataTypes } from 'sequelize';
 import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
 const saltRounds = 10;
+
+// Настройка multer для загрузки файлов
+const storage = multer.diskStorage({
+  destination: 'uploads/',
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({ 
+  storage: storage,
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed!'), false);
+    }
+  }
+});
 
 // Создаем приложение Express
 const app = express();
@@ -22,7 +53,7 @@ const sequelize = new Sequelize('blog', 'root', '1234', {
   dialect: 'mysql',
   logging: console.log,
   define: {
-    timestamps: false // Отключаем автоматические timestamp поля
+    timestamps: false
   }
 });
 
@@ -85,6 +116,14 @@ const Post = sequelize.define('Post', {
     primaryKey: true,
     autoIncrement: true
   },
+  user_id: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    references: {
+      model: User,
+      key: 'id'
+    }
+  },
   title: {
     type: DataTypes.STRING(100),
     allowNull: false
@@ -120,13 +159,21 @@ const UserAction = sequelize.define('UserAction', {
     primaryKey: true,
     autoIncrement: true
   },
+  user_id: {
+    type: DataTypes.INTEGER,
+    allowNull: false
+  },
   action_type: {
     type: DataTypes.ENUM(
       'create_post', 
       'edit_post', 
       'delete_post', 
       'edit_profile', 
-      'delete_account'
+      'delete_account',
+      'login',
+      'register',
+      'ban_user',
+      'unban_user'
     ),
     allowNull: false
   },
@@ -151,11 +198,23 @@ const UserAction = sequelize.define('UserAction', {
 });
 
 // Связи между таблицами
-User.hasMany(Post, { foreignKey: 'user_id' });
-Post.belongsTo(User, { foreignKey: 'user_id' });
+User.hasMany(Post, { 
+  foreignKey: 'user_id',
+  onDelete: 'CASCADE',
+  as: 'posts'
+});
+Post.belongsTo(User, { 
+  foreignKey: 'user_id',
+  as: 'User'
+});
 
-User.hasMany(UserAction, { foreignKey: 'user_id' });
-UserAction.belongsTo(User, { foreignKey: 'user_id' });
+User.hasMany(UserAction, { 
+  foreignKey: 'user_id',
+  onDelete: 'CASCADE'
+});
+UserAction.belongsTo(User, { 
+  foreignKey: 'user_id'
+});
 
 // Хуки для логирования действий
 User.afterUpdate(async (user, options) => {
@@ -195,10 +254,48 @@ Post.afterDestroy(async (post, options) => {
   });
 });
 
+const authenticate = async (req, res, next) => {
+  const token = req.headers.authorization?.split(' ')[1];
+  
+  if (!token) {
+    return res.status(401).json({ error: 'Требуется авторизация' });
+  }
+
+  try {
+    const decoded = jwt.verify(token, 'your-secret-key');
+    req.user = await User.findByPk(decoded.id);
+    next();
+  } catch (err) {
+    res.status(401).json({ error: 'Неверный токен' });
+  }
+};
+
 // Синхронизация с базой данных
 sequelize.sync({ alter: true })
   .then(() => console.log('Таблицы синхронизированы'))
   .catch(err => console.error('Ошибка при синхронизации таблиц:', err));
+
+// Middleware для получения IP-адреса
+app.use((req, res, next) => {
+  req.ipAddress = req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+  next();
+});
+
+// Настройка статической папки для загрузок
+app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads'), {
+  setHeaders: (res, path) => {
+    const ext = path.split('.').pop().toLowerCase();
+    const mimeTypes = {
+      'jpg': 'image/jpeg',
+      'jpeg': 'image/jpeg',
+      'png': 'image/png',
+      'gif': 'image/gif'
+    };
+    if (mimeTypes[ext]) {
+      res.setHeader('Content-Type', mimeTypes[ext]);
+    }
+  }
+}));
 
 // Генерация хэша для админа
 async function generateAdminHash() {
@@ -212,14 +309,7 @@ async function generateAdminHash() {
   }
 }
 
-// Вызов функции (если нужно сгенерировать хэш) 
 generateAdminHash();
-
-// Middleware для получения IP-адреса
-app.use((req, res, next) => {
-  req.ipAddress = req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress;
-  next();
-});
 
 //...............Авторизация пользователя.......................
 app.post('/api/login', async (req, res) => {
@@ -236,7 +326,6 @@ app.post('/api/login', async (req, res) => {
       return res.status(401).json({ success: false, message: 'Неверный логин или пароль' });
     }
 
-    // Логируем успешный вход
     await UserAction.create({
       user_id: user.id,
       action_type: 'login',
@@ -277,7 +366,6 @@ app.post('/api/register', async (req, res) => {
       role: role || 'user'
     });
 
-    // Логируем регистрацию
     await UserAction.create({
       user_id: newUser.id,
       action_type: 'register',
@@ -305,8 +393,10 @@ app.get('/api/users', async (req, res) => {
   try {
     const users = await User.findAll({
       include: [
-        { model: Post, as: 'posts' },
-        { model: UserAction, as: 'actions' }
+        { 
+          model: Post, 
+          as: 'posts'
+        }
       ],
       order: [
         ['id', 'ASC'],
@@ -334,7 +424,6 @@ app.put('/api/users/:id/status', async (req, res) => {
     user.is_active = is_active;
     await user.save();
 
-    // Логируем изменение статуса
     await UserAction.create({
       user_id: id,
       action_type: is_active ? 'unban_user' : 'ban_user',
@@ -352,32 +441,44 @@ app.put('/api/users/:id/status', async (req, res) => {
 app.get('/api/posts', async (req, res) => {
   try {
     const posts = await Post.findAll({
-      include: [
-        { 
-          model: User,
-          attributes: ['id', 'first_name', 'last_name', 'login_entry']
-        }
-      ],
+      include: [{
+        model: User,
+        as: 'User',
+        attributes: ['id', 'first_name', 'last_name', 'is_active']
+      }],
       order: [['created_at', 'DESC']]
     });
-    res.json(posts);
+
+    const response = posts.map(post => ({
+      id: post.id,
+      title: post.title,
+      content: post.content,
+      image_url: post.image_url,
+      created_at: post.created_at,
+      author: post.User ? `${post.User.first_name} ${post.User.last_name}` : 'Неизвестный автор',
+      is_active: post.User ? post.User.is_active : true
+    }));
+
+    res.json(response);
   } catch (err) {
     console.error('Ошибка при получении постов:', err);
-    res.status(500).json({ error: 'Ошибка сервера' });
+    res.status(500).json({ 
+      error: 'Ошибка при получении данных',
+      details: err.message 
+    });
   }
 });
 
-app.post('/api/posts', async (req, res) => {
-  const { title, content, image_url, user_id } = req.body;
+app.post('/api/posts', upload.single('image'), async (req, res) => {
+  const { title, content } = req.body;
+  const image_url = req.file ? `/uploads/${req.file.filename}` : null;
 
   try {
     const post = await Post.create({
       title,
       content,
       image_url,
-      user_id
-    }, {
-      ip: req.ipAddress
+      user_id: req.user?.id || 1 // Используем ID авторизованного пользователя или 1 по умолчанию
     });
 
     res.status(201).json(post);
@@ -409,16 +510,31 @@ app.put('/api/posts/:id', async (req, res) => {
   }
 });
 
-app.delete('/api/posts/:id', async (req, res) => {
+app.delete('/api/posts/:id', authenticate, async (req, res) => {
   const { id } = req.params;
+  const user_id = req.user.id;
 
   try {
-    const post = await Post.findByPk(id);
+    const post = await Post.findOne({ where: { id } });
     if (!post) {
       return res.status(404).json({ error: 'Пост не найден' });
     }
 
-    await post.destroy({ ip: req.ipAddress });
+    if (post.user_id !== user_id) {
+      return res.status(403).json({ error: 'Недостаточно прав для удаления этого поста' });
+    }
+
+    // Удаляем связанный файл изображения, если он есть
+    if (post.image_url) {
+      const imagePath = path.join(__dirname, post.image_url.replace('/uploads/', 'uploads/'));
+      try {
+        fs.unlinkSync(imagePath);
+      } catch (err) {
+        console.error('Ошибка при удалении файла изображения:', err);
+      }
+    }
+
+    await post.destroy();
     res.json({ message: 'Пост успешно удален' });
   } catch (err) {
     console.error('Ошибка при удалении поста:', err);
@@ -438,12 +554,6 @@ app.get('/api/profile/:id', async (req, res) => {
           model: Post,
           as: 'posts',
           order: [['created_at', 'DESC']]
-        },
-        {
-          model: UserAction,
-          as: 'actions',
-          order: [['performed_at', 'DESC']],
-          limit: 10
         }
       ]
     });
@@ -459,25 +569,41 @@ app.get('/api/profile/:id', async (req, res) => {
   }
 });
 
-app.put('/api/profile/:id', async (req, res) => {
-  const { id } = req.params;
-  const { first_name, last_name, bio, avatar_url } = req.body;
-
+app.put('/api/profile/:id', upload.single('avatar'), async (req, res) => {
   try {
-    const user = await User.findByPk(id);
-    if (!user) {
-      return res.status(404).json({ error: 'Пользователь не найден' });
+    const user = await User.findByPk(req.params.id);
+    if (!user) return res.status(404).json({ error: 'Пользователь не найден' });
+
+    // Обновляем данные
+    if (req.body.first_name) user.first_name = req.body.first_name;
+    if (req.body.last_name) user.last_name = req.body.last_name;
+    if (req.body.bio !== undefined) user.bio = req.body.bio;
+
+    // Обработка аватара
+    if (req.file) {
+      // Формируем корректный URL
+      const avatarUrl = `/uploads/${req.file.filename}`;
+      
+      // Удаляем старый файл если он существует
+      if (user.avatar_url) {
+        const oldPath = path.join(__dirname, '..', 'uploads', path.basename(user.avatar_url));
+        if (fs.existsSync(oldPath)) {
+          fs.unlinkSync(oldPath);
+        }
+      }
+      
+      user.avatar_url = avatarUrl;
     }
 
-    user.first_name = first_name || user.first_name;
-    user.last_name = last_name || user.last_name;
-    user.bio = bio !== undefined ? bio : user.bio;
-    user.avatar_url = avatar_url || user.avatar_url;
-    await user.save({ ip: req.ipAddress });
+    await user.save();
+    
+    res.json({
+      ...user.toJSON(),
+      avatar_url: user.avatar_url // Возвращаем полный URL
+    });
 
-    res.json(user);
   } catch (err) {
-    console.error('Ошибка при обновлении профиля:', err);
+    console.error('Ошибка:', err);
     res.status(500).json({ error: 'Ошибка сервера' });
   }
 });
@@ -491,7 +617,16 @@ app.delete('/api/profile/:id', async (req, res) => {
       return res.status(404).json({ error: 'Пользователь не найден' });
     }
 
-    // Логируем удаление аккаунта перед его удалением
+    // Удаляем аватар пользователя, если он существует
+    if (user.avatar_url) {
+      const avatarPath = path.join(__dirname, user.avatar_url.replace('/uploads/', 'uploads/'));
+      try {
+        fs.unlinkSync(avatarPath);
+      } catch (err) {
+        console.error('Ошибка при удалении аватара:', err);
+      }
+    }
+
     await UserAction.create({
       user_id: id,
       action_type: 'delete_account',
@@ -536,4 +671,5 @@ app.get('/api/user-actions', async (req, res) => {
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Сервер запущен на порту ${PORT}`);
+  console.log(`Статические файлы доступны по адресу: http://localhost:${PORT}/uploads/`);
 });

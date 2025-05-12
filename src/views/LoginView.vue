@@ -62,6 +62,15 @@
         password: ''
       }
     },
+    
+    created() {
+      // При загрузке страницы логина очищаем данные авторизации
+      localStorage.removeItem('isAuthenticated');
+      localStorage.removeItem('userRole');
+      localStorage.removeItem('userId');
+      localStorage.removeItem('userName');
+    },
+
     methods: {
       async handleLogin() {
         try {
@@ -79,20 +88,18 @@
           const data = await response.json();
           
           if (data.success) {
-            console.log('Данные пользователя:', data); // Логирование
-            localStorage.setItem('isAuthenticated', 'true')
-            localStorage.setItem('userRole', data.role)
-            localStorage.setItem('firstName', data.first_name);
-            localStorage.setItem('lastName', data.last_name);
-            localStorage.setItem('userName', data.first_name + ' ' + data.last_name)
-            this.$router.push(data.role === 'admin' ? '/admin' : '/user');
-
-            console.log('Попытка перехода на страницу:', data.role === 'admin' ? '/admin' : '/user'); // Логирование
-            const route = data.role === 'admin' ? '/admin' : '/user';
-            console.log('Успешная авторизация. Переход на:', route);
-            this.$router.push('/admin').catch(err => {
-              console.error('Ошибка перехода:', err);
-            });
+            // Сохраняем данные пользователя
+            localStorage.setItem('isAuthenticated', 'true');
+            localStorage.setItem('userRole', data.role);
+            localStorage.setItem('userId', data.id);
+            localStorage.setItem('userName', `${data.first_name} ${data.last_name}`);
+            
+            // Перенаправляем в зависимости от роли
+            if (data.role === 'admin') {
+              this.$router.push('/admin');
+            } else {
+              this.$router.push('/news');
+            }
           } else {
             alert(data.message);
           }

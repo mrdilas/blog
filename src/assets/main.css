@@ -1,0 +1,21 @@
+@import url('https://fonts.googleapis.com/css2?family=Pacifico&family=Roboto:ital,wght@0,100..900;1,100..900&display=swap');
+
+
+:root {
+  --font: "Roboto", serif;
+
+  --accent: #12C0DD;
+  --accent-rgb: 18, 192, 221;
+  --light: #FFFFFF;
+
+  --border-radius: 10px;
+  --width-line: 2px;
+  --tr: .3s;
+}
+
+body, #app {
+  font-family: var(--font);
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+}

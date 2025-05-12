@@ -2,24 +2,24 @@
   <div class="admin-page">
     <div class="admin-container">
       <h1 class="admin-title">Панель администратора</h1>
-      
-      <div class="search-section">
-        <input 
-          v-model="searchQuery"
-          type="text" 
-          placeholder="Поиск пользователей..."
-          class="search-input"
-        >
-      </div>
+      <button class="logout-button" @click="handleLogout">Выйти</button>
 
       <div class="users-list">
-        <div v-for="user in filteredUsers" :key="user.id" class="user-card">
+        <div v-for="user in users" :key="user.id" class="user-card">
           <div class="user-header">
-            <h3>{{ user.first_name }} {{ user.last_name }}</h3>
-            <span class="user-login">@{{ user.login_entry }}</span>
-            <span :class="['user-status', user.is_active ? 'active' : 'banned']">
-              {{ user.is_active ? 'Активен' : 'Заблокирован' }}
-            </span>
+            <div class="user-avatar">
+              <img v-if="user.avatar_url" :src="user.avatar_url" class="avatar" alt="Аватар">
+              <div v-else class="avatar-placeholder">
+                {{ getInitials(user.first_name, user.last_name) }}
+              </div>
+            </div>
+            <div class="user-info">
+              <h3>{{ user.first_name }} {{ user.last_name }}</h3>
+              <span class="user-login">@{{ user.login_entry }}</span>
+              <span :class="['user-status', user.is_active ? 'active' : 'banned']">
+                {{ user.is_active ? 'Активен' : 'Заблокирован' }}
+              </span>
+            </div>
             <button 
               @click="toggleUserStatus(user.id, !user.is_active)"
               :class="['status-button', user.is_active ? 'ban' : 'unban']"
@@ -29,10 +29,10 @@
           </div>
 
           <div class="user-posts">
-            <h4>Посты пользователя ({{ user.posts.length }})</h4>
+            <h4>Новости пользователя ({{ user.posts.length }})</h4>
             
             <div v-if="user.posts.length === 0" class="no-posts">
-              Пользователь еще не создал постов
+              Пользователь еще не создал новостей
             </div>
 
             <div v-for="post in user.posts" :key="post.id" class="post-item">
@@ -42,10 +42,11 @@
                   @click="deletePost(post.id)"
                   class="delete-post-button"
                 >
-                  Удалить пост
+                  Удалить новость
                 </button>
               </div>
               <h5 class="post-title">{{ post.title }}</h5>
+              <img v-if="post.image_url" :src="post.image_url" class="post-image" alt="Post image">
               <p class="post-content">{{ post.content }}</p>
             </div>
           </div>
@@ -60,67 +61,33 @@ export default {
   name: 'AdminView',
   data() {
     return {
-      searchQuery: '',
-      users: [
-        {
-          id: 1,
-          login_entry: 'ivanov',
-          first_name: 'Иван',
-          last_name: 'Иванов',
-          is_active: true,
-          posts: [
-            {
-              id: 1,
-              title: 'Мой первый пост',
-              content: 'Это содержание моего первого поста в этом блоге.',
-              created_at: '2023-05-15T10:30:00Z'
-            },
-            {
-              id: 2,
-              title: 'Второй пост',
-              content: 'Продолжаю вести блог, вот мой второй пост.',
-              created_at: '2023-05-16T14:45:00Z'
-            }
-          ]
-        },
-        {
-          id: 2,
-          login_entry: 'petrov',
-          first_name: 'Петр',
-          last_name: 'Петров',
-          is_active: false,
-          posts: [
-            {
-              id: 3,
-              title: 'Привет всем',
-              content: 'Я новый пользователь этого блога!',
-              created_at: '2023-05-10T09:15:00Z'
-            }
-          ]
-        }
-      ]
+      users: []
     }
   },
-  computed: {
-    filteredUsers() {
-      if (!this.searchQuery) return this.users;
-      const query = this.searchQuery.toLowerCase();
-      return this.users.filter(user => 
-        user.first_name.toLowerCase().includes(query) ||
-        user.last_name.toLowerCase().includes(query) ||
-        user.login_entry.toLowerCase().includes(query)
-      );
-    }
+  async created() {
+    await this.fetchUsers();
   },
   methods: {
+    getInitials(firstName, lastName) {
+      return (firstName.charAt(0) + lastName.charAt(0)).toUpperCase();
+    },
     formatDate(dateString) {
       const options = { year: 'numeric', month: 'long', day: 'numeric' };
       return new Date(dateString).toLocaleDateString('ru-RU', options);
     },
+    async fetchUsers() {
+      try {
+        const response = await fetch('http://localhost:3000/api/users');
+        const data = await response.json();
+        // Фильтруем только обычных пользователей (не админов)
+        this.users = data.filter(user => user.role === 'user');
+      } catch (error) {
+        console.error('Ошибка при загрузке пользователей:', error);
+      }
+    },
     async toggleUserStatus(userId, newStatus) {
       try {
-        // Здесь будет запрос к API для изменения статуса пользователя
-        const response = await fetch(`/api/users/${userId}/status`, {
+        const response = await fetch(`http://localhost:3000/api/users/${userId}/status`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -129,10 +96,8 @@ export default {
         });
         
         if (response.ok) {
-          const userIndex = this.users.findIndex(u => u.id === userId);
-          if (userIndex !== -1) {
-            this.users[userIndex].is_active = newStatus;
-          }
+          await this.fetchUsers();
+          alert(`Пользователь успешно ${newStatus ? 'разблокирован' : 'заблокирован'}`);
         } else {
           alert('Ошибка при изменении статуса пользователя');
         }
@@ -142,25 +107,30 @@ export default {
       }
     },
     async deletePost(postId) {
-      if (!confirm('Вы уверены, что хотите удалить этот пост?')) return;
+      if (!confirm('Вы уверены, что хотите удалить эту новость?')) return;
       
       try {
-        // Здесь будет запрос к API для удаления поста
-        const response = await fetch(`/api/posts/${postId}`, {
+        const response = await fetch(`http://localhost:3000/api/posts/${postId}`, {
           method: 'DELETE'
         });
         
         if (response.ok) {
-          this.users.forEach(user => {
-            user.posts = user.posts.filter(post => post.id !== postId);
-          });
+          await this.fetchUsers();
+          alert('Новость успешно удалена');
         } else {
-          alert('Ошибка при удалении поста');
+          alert('Ошибка при удалении новости');
         }
       } catch (error) {
         console.error('Ошибка:', error);
         alert('Ошибка при подключении к серверу');
       }
+    },
+    handleLogout() {
+      localStorage.removeItem('isAuthenticated');
+      localStorage.removeItem('userRole');
+      localStorage.removeItem('userId');
+      localStorage.removeItem('userName');
+      this.$router.push('/');
     }
   }
 }
@@ -186,18 +156,6 @@ export default {
   color: #333;
   text-align: center;
   margin-bottom: 30px;
-}
-
-.search-section {
-  margin-bottom: 20px;
-}
-
-.search-input {
-  width: 100%;
-  padding: 10px 15px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 16px;
 }
 
 .users-list {
@@ -321,5 +279,64 @@ export default {
   margin: 0;
   color: #555;
   line-height: 1.5;
+}
+
+.user-avatar {
+  margin-right: 15px;
+}
+
+.avatar {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.avatar-placeholder {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background-color: #646cff;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+}
+
+.user-header {
+  display: flex;
+  align-items: center;
+}
+
+.user-info {
+  flex-grow: 1;
+}
+
+.post-image {
+  max-width: 100%;
+  border-radius: 4px;
+  margin: 10px 0;
+}
+
+.admin-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+}
+
+.logout-button {
+  padding: 10px 20px;
+  background-color: #f44336;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.logout-button:hover {
+  background-color: #d32f2f;
 }
 </style>
