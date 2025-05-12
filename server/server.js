@@ -456,7 +456,8 @@ app.get('/api/posts', async (req, res) => {
       image_url: post.image_url,
       created_at: post.created_at,
       author: post.User ? `${post.User.first_name} ${post.User.last_name}` : 'Неизвестный автор',
-      is_active: post.User ? post.User.is_active : true
+      is_active: post.User ? post.User.is_active : true,
+      user_id: post.user_id,
     }));
 
     res.json(response);
@@ -470,15 +471,15 @@ app.get('/api/posts', async (req, res) => {
 });
 
 app.post('/api/posts', upload.single('image'), async (req, res) => {
-  const { title, content } = req.body;
-  const image_url = req.file ? `/uploads/${req.file.filename}` : null;
+  const { title, content, userId } = req.body; // Добавляем userId из запроса
+  const image_url = req.file ? req.file.filename : null;
 
   try {
     const post = await Post.create({
       title,
       content,
       image_url,
-      user_id: req.user?.id || 1 // Используем ID авторизованного пользователя или 1 по умолчанию
+      user_id: userId // Используем переданный userId
     });
 
     res.status(201).json(post);
@@ -510,9 +511,8 @@ app.put('/api/posts/:id', async (req, res) => {
   }
 });
 
-app.delete('/api/posts/:id', authenticate, async (req, res) => {
+app.delete('/api/posts/:id', async (req, res) => {
   const { id } = req.params;
-  const user_id = req.user.id;
 
   try {
     const post = await Post.findOne({ where: { id } });
@@ -520,13 +520,9 @@ app.delete('/api/posts/:id', authenticate, async (req, res) => {
       return res.status(404).json({ error: 'Пост не найден' });
     }
 
-    if (post.user_id !== user_id) {
-      return res.status(403).json({ error: 'Недостаточно прав для удаления этого поста' });
-    }
-
     // Удаляем связанный файл изображения, если он есть
     if (post.image_url) {
-      const imagePath = path.join(__dirname, post.image_url.replace('/uploads/', 'uploads/'));
+      const imagePath = path.join(__dirname, '..', 'uploads', path.basename(post.image_url));
       try {
         fs.unlinkSync(imagePath);
       } catch (err) {

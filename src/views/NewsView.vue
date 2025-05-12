@@ -21,6 +21,13 @@
             <div class="news-item-footer">
               <span class="news-item-author">{{ news.author }}</span>
               <span class="news-item-date">{{ formatDate(news.created_at) }}</span>
+              <button 
+                v-if="isCurrentUserPost(news.user_id)"
+                @click="deletePost(news.id)"
+                class="delete-button"
+              >
+                Удалить
+              </button>
             </div>
           </div>
           <div v-else class="banned-user-message">
@@ -39,7 +46,8 @@ export default {
     return {
       newsList: [],
       userName: localStorage.getItem('userName') || 'Пользователь',
-      baseUrl: '../server' // Добавляем baseUrl
+      userId: localStorage.getItem('userId') || null,
+      baseUrl: '../server/uploads/'
     }
   },
   computed: {
@@ -57,6 +65,10 @@ export default {
     await this.fetchNews();
   },
   methods: {
+    isCurrentUserPost(postUserId) {
+      return postUserId && this.userId && 
+            postUserId.toString() === this.userId.toString();
+    },
     formatDate(dateString) {
       const options = { year: 'numeric', month: 'long', day: 'numeric' };
       return new Date(dateString).toLocaleDateString('ru-RU', options);
@@ -84,7 +96,8 @@ export default {
         this.newsList = data.map(post => ({
           ...post,
           author: post.author || 'Неизвестный автор',
-          is_active: post.is_active !== undefined ? post.is_active : true
+          is_active: post.is_active !== undefined ? post.is_active : true,
+          user_id: post.user_id || null
         }));
         
       } catch (error) {
@@ -98,6 +111,28 @@ export default {
       localStorage.removeItem('userId');
       localStorage.removeItem('userName');
       this.$router.push('/');
+    },
+    async deletePost(postId) {
+      if (!confirm('Вы уверены, что хотите удалить эту новость?')) return;
+      
+      try {
+        const response = await fetch(`http://localhost:3000/api/posts/${postId}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+        
+        if (response.ok) {
+          await this.fetchNews();
+          alert('Новость успешно удалена');
+        } else {
+          alert('Ошибка при удалении новости');
+        }
+      } catch (error) {
+        console.error('Ошибка:', error);
+        alert('Ошибка при подключении к серверу');
+      }
     }
   }
 }
@@ -168,9 +203,11 @@ export default {
 }
 
 .news-item {
-  margin-bottom: 20px;
-  padding-bottom: 15px;
-  border-bottom: 1px solid #eee;
+  margin-bottom: 30px;
+  padding: 20px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 
 .news-item:last-child {
@@ -192,10 +229,21 @@ export default {
   line-height: 1.5;
 }
 
+.news-item-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 10px;
+}
+
+.news-item-author {
+  color: #666;
+  font-size: 14px;
+}
+
 .news-item-date {
   color: #888;
   font-size: 12px;
-  text-align: right;
 }
 
 .add-news-button {
@@ -214,20 +262,11 @@ export default {
 }
 
 .news-image {
-  max-width: 100%;
+  width: 100%;
+  max-height: 300px;
+  object-fit: cover;
   border-radius: 4px;
   margin: 10px 0;
-}
-
-.news-item-footer {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 10px;
-}
-
-.news-item-author {
-  color: #666;
-  font-size: 14px;
 }
 
 .banned-user-message {
@@ -237,9 +276,19 @@ export default {
   text-align: center;
 }
 
-.button-group {
-  display: flex;
-  gap: 10px;
+.delete-button {
+  padding: 4px 8px;
+  background-color: #ffebee;
+  color: #c62828;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  margin-left: 10px;
+}
+
+.delete-button:hover {
+  background-color: #ffcdd2;
 }
 
 .logout-button {

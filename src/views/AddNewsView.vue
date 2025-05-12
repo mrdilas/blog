@@ -61,7 +61,7 @@ export default {
         image: null
       },
       imagePreview: null,
-      baseUrl: '../server' // Добавляем baseUrl
+      baseUrl: '../server/uploads/' // Добавляем baseUrl
     }
   },
 
@@ -84,6 +84,7 @@ export default {
         const formData = new FormData();
         formData.append('title', this.form.title);
         formData.append('content', this.form.content);
+        formData.append('userId', localStorage.getItem('userId')); // Добавляем userId
         if (this.form.image) {
           formData.append('image', this.form.image);
         }

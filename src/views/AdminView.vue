@@ -62,7 +62,7 @@ export default {
   data() {
     return {
       users: [],
-      baseUrl: '../server' // Добавляем baseUrl
+      baseUrl: '../server/uploads/' // Добавляем baseUrl
     }
   },
   computed: {
@@ -95,45 +95,46 @@ export default {
       }
     },
     async toggleUserStatus(userId, newStatus) {
-      try {
-        const response = await fetch(`http://localhost:3000/api/users/${userId}/status`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ is_active: newStatus })
-        });
-        
-        if (response.ok) {
-          await this.fetchUsers();
-          alert(`Пользователь успешно ${newStatus ? 'разблокирован' : 'заблокирован'}`);
-        } else {
-          alert('Ошибка при изменении статуса пользователя');
+        try {
+          const response = await fetch(`http://localhost:3000/api/users/${userId}/status`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ is_active: newStatus })
+          });
+          
+          if (response.ok) {
+            await this.fetchUsers();
+            alert(`Пользователь успешно ${newStatus ? 'разблокирован' : 'заблокирован'}`);
+          } else {
+            alert('Ошибка при изменении статуса пользователя');
+          }
+        } catch (error) {
+          console.error('Ошибка:', error);
+          alert('Ошибка при подключении к серверу');
         }
-      } catch (error) {
-        console.error('Ошибка:', error);
-        alert('Ошибка при подключении к серверу');
-      }
-    },
-    async deletePost(postId) {
-      if (!confirm('Вы уверены, что хотите удалить эту новость?')) return;
-      
-      try {
-        const response = await fetch(`http://localhost:3000/api/posts/${postId}`, {
-          method: 'DELETE'
-        });
+      },
+
+      async deletePost(postId) {
+        if (!confirm('Вы уверены, что хотите удалить эту новость?')) return;
         
-        if (response.ok) {
-          await this.fetchUsers();
-          alert('Новость успешно удалена');
-        } else {
-          alert('Ошибка при удалении новости');
+        try {
+          const response = await fetch(`http://localhost:3000/api/posts/${postId}`, {
+            method: 'DELETE'
+          });
+          
+          if (response.ok) {
+            await this.fetchUsers();
+            alert('Новость успешно удалена');
+          } else {
+            alert('Ошибка при удалении новости');
+          }
+        } catch (error) {
+          console.error('Ошибка:', error);
+          alert('Ошибка при подключении к серверу');
         }
-      } catch (error) {
-        console.error('Ошибка:', error);
-        alert('Ошибка при подключении к серверу');
-      }
-    },
+      },
     handleLogout() {
       localStorage.removeItem('isAuthenticated');
       localStorage.removeItem('userRole');
@@ -295,8 +296,8 @@ export default {
 }
 
 .avatar {
-  width: 50px;
-  height: 50px;
+  width: 60px;
+  height: 60px;
   border-radius: 50%;
   object-fit: cover;
 }
@@ -324,6 +325,8 @@ export default {
 
 .post-image {
   max-width: 100%;
+  max-height: 300px;
+  object-fit: cover;
   border-radius: 4px;
   margin: 10px 0;
 }

@@ -32,7 +32,7 @@
         
         <form v-else @submit.prevent="saveProfile" class="edit-form" enctype="multipart/form-data">
           <div class="avatar-container">
-            <img v-if="editForm.avatar_url" :src="editForm.avatar_url" class="avatar" alt="Аватар">
+            <img v-if="editForm.avatarPreview" :src="editForm.avatarPreview" class="avatar" alt="Аватар">
             <div v-else class="avatar-placeholder">
               {{ avatarInitials }}
             </div>
@@ -81,7 +81,7 @@ export default {
         last_name: '',
         role: '',
         bio: '',
-        avatar_url: '' // Должно содержать только имя файла, например: "1747044529807-502411981.jpg"
+        avatar_url: '' 
       },
       isEditing: false,
       editForm: {
