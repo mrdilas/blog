@@ -6,7 +6,7 @@
         
         <div v-if="!isEditing" class="profile-info">
           <div class="avatar-container">
-            <img v-if="user.avatar_url" :src="user.avatar_url + '?' + new Date().getTime()" class="avatar" alt="Аватар">
+            <img v-if="fullAvatarUrl" :src="fullAvatarUrl" class="avatar" alt="Аватар">
             <div v-else class="avatar-placeholder">
               {{ avatarInitials }}
             </div>
@@ -63,6 +63,8 @@
         
         <button v-if="!isEditing" class="edit-button" @click="startEditing">Редактировать</button>
         <button class="back-button" @click="goBack">Назад</button>
+
+        
       </div>
     </div>
   </div>
@@ -79,125 +81,153 @@ export default {
         last_name: '',
         role: '',
         bio: '',
-        avatar_url: ''
+        avatar_url: '' // Должно содержать только имя файла, например: "1747044529807-502411981.jpg"
       },
       isEditing: false,
       editForm: {
         first_name: '',
         last_name: '',
         bio: '',
-        avatar_url: ''
+        avatar: null,
+        avatarPreview: ''
+      },
+      baseUrl: '../server/uploads/',
+      debug: {
+        dbAvatarUrl: '',
+        fullComputedUrl: '',
+        fileExists: false,
+        serverResponse: null
       }
     }
   },
   computed: {
     avatarInitials() {
       return (this.user.first_name.charAt(0) + this.user.last_name.charAt(0)).toUpperCase();
+    },
+    fullAvatarUrl() {
+      const url = this.user.avatar_url ? `${this.baseUrl}${this.user.avatar_url}` : '';
+      this.debug.fullComputedUrl = url; // Для отладки
+      return url;
     }
   },
   async created() {
+    console.log('=== ИНИЦИАЛИЗАЦИЯ КОМПОНЕНТА ===');
     await this.fetchUserData();
+    this.checkFileExists();
   },
   methods: {
     async fetchUserData() {
+      console.log('=== ЗАГРУЗКА ДАННЫХ ПОЛЬЗОВАТЕЛЯ ===');
       const userId = localStorage.getItem('userId');
+      
       try {
+        console.log('Отправка запроса к серверу...');
         const response = await fetch(`http://localhost:3000/api/profile/${userId}`);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
         const data = await response.json();
+        console.log('Ответ сервера:', data);
+        this.debug.serverResponse = data; // Сохраняем для отладки
+        
         this.user = data;
+        this.debug.dbAvatarUrl = data.avatar_url; // Сохраняем исходное значение из БД
+        
+        console.log('Данные пользователя загружены. avatar_url:', this.user.avatar_url);
+        console.log('Сформированный URL:', this.fullAvatarUrl);
+        
       } catch (error) {
         console.error('Ошибка при загрузке профиля:', error);
+        alert('Не удалось загрузить данные профиля');
       }
     },
+    
+    async checkFileExists() {
+      if (!this.user.avatar_url) {
+        this.debug.fileExists = false;
+        return;
+      }
+      
+      try {
+        const url = this.fullAvatarUrl;
+        console.log('Проверка доступности файла по URL:', url);
+        
+        const response = await fetch(url, { method: 'HEAD' });
+        this.debug.fileExists = response.ok;
+        
+        console.log('Файл доступен:', response.ok);
+      } catch (error) {
+        console.error('Ошибка при проверке файла:', error);
+        this.debug.fileExists = false;
+      }
+    },
+    
     startEditing() {
+      console.log('=== РЕДАКТИРОВАНИЕ ПРОФИЛЯ ===');
       this.editForm = {
         first_name: this.user.first_name,
         last_name: this.user.last_name,
         bio: this.user.bio || '',
-        avatar_url: this.user.avatar_url || ''
+        avatar: null,
+        avatarPreview: this.fullAvatarUrl
       };
       this.isEditing = true;
+      console.log('Режим редактирования активирован');
     },
-    cancelEdit() {
-      this.isEditing = false;
-    },
-
+    
     async saveProfile() {
+      console.log('=== СОХРАНЕНИЕ ПРОФИЛЯ ===');
+      const userId = localStorage.getItem('userId');
+      
       try {
-        const userId = localStorage.getItem('userId');
-        if (!userId) {
-          throw new Error('ID пользователя не найден');
-        }
-
-        // 1. Создаем FormData для отправки файла и данных формы
         const formData = new FormData();
         formData.append('first_name', this.editForm.first_name);
         formData.append('last_name', this.editForm.last_name);
         formData.append('bio', this.editForm.bio || '');
 
-        // 2. Добавляем файл аватара, если он был выбран
         if (this.editForm.avatar) {
+          console.log('Обнаружен новый файл аватара:', this.editForm.avatar.name);
           formData.append('avatar', this.editForm.avatar);
         }
 
-        // 3. Отправляем запрос на сервер
+        console.log('Отправка данных на сервер...');
         const response = await fetch(`http://localhost:3000/api/profile/${userId}`, {
           method: 'PUT',
           body: formData
-          // Не устанавливаем Content-Type вручную - браузер сделает это автоматически
         });
 
-        // 4. Обрабатываем ответ сервера
         if (!response.ok) {
           const error = await response.text();
           throw new Error(error || 'Ошибка при обновлении профиля');
         }
 
         const updatedUser = await response.json();
-        console.log('Обновленные данные пользователя:', updatedUser);
-
-        // 5. Обновляем данные пользователя в компоненте
-        this.user = {
-          ...this.user,
-          ...updatedUser
-        };
-
-        // 6. Принудительно обновляем URL аватара для избежания кэширования
-        if (updatedUser.avatar_url) {
-          this.user.avatar_url = `${updatedUser.avatar_url}?t=${Date.now()}`;
-        }
-
-        // 7. Обновляем имя пользователя в localStorage
-        localStorage.setItem('userName', `${updatedUser.first_name} ${updatedUser.last_name}`);
-
-        // 8. Выходим из режима редактирования
+        console.log('Ответ сервера после сохранения:', updatedUser);
+        
+        this.user = updatedUser;
         this.isEditing = false;
         
-        // 9. Уведомляем пользователя об успехе
+        // Проверяем доступность нового файла
+        await this.checkFileExists();
+        
         alert('Профиль успешно обновлен!');
-
       } catch (error) {
-        console.error('Ошибка при обновлении профиля:', error);
-        
-        // 10. Показываем пользователю понятное сообщение об ошибке
-        let errorMessage = 'Ошибка при обновлении профиля';
-        if (error.message.includes('File too large')) {
-          errorMessage = 'Размер файла слишком большой';
-        } else if (error.message.includes('invalid file type')) {
-          errorMessage = 'Недопустимый тип файла';
-        }
-        
-        alert(errorMessage);
+        console.error('Ошибка при сохранении:', error);
+        alert(error.message || 'Ошибка при обновлении профиля');
       }
     },
     
     handleAvatarUpload(event) {
       const file = event.target.files[0];
       if (file) {
+        console.log('Выбран новый файл:', file.name, 'тип:', file.type, 'размер:', file.size);
         this.editForm.avatar = file;
-        this.editForm.avatar_url = URL.createObjectURL(file);
+        this.editForm.avatarPreview = URL.createObjectURL(file);
       }
     },
+    
     goBack() {
       this.$router.go(-1);
     }

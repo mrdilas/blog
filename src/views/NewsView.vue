@@ -38,7 +38,8 @@ export default {
   data() {
     return {
       newsList: [],
-      userName: localStorage.getItem('userName') || 'Пользователь'
+      userName: localStorage.getItem('userName') || 'Пользователь',
+      baseUrl: '../server' // Добавляем baseUrl
     }
   },
   computed: {
@@ -46,7 +47,8 @@ export default {
       return this.newsList.map(news => {
         return {
           ...news,
-          isUserBanned: !news.is_active
+          isUserBanned: !news.is_active,
+          image_url: news.image_url ? `${this.baseUrl}${news.image_url}` : null
         };
       });
     }

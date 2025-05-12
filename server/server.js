@@ -581,8 +581,8 @@ app.put('/api/profile/:id', upload.single('avatar'), async (req, res) => {
 
     // Обработка аватара
     if (req.file) {
-      // Формируем корректный URL
-      const avatarUrl = `/uploads/${req.file.filename}`;
+      // Сохраняем только имя файла
+      const avatarFilename = req.file.filename;
       
       // Удаляем старый файл если он существует
       if (user.avatar_url) {
@@ -592,14 +592,14 @@ app.put('/api/profile/:id', upload.single('avatar'), async (req, res) => {
         }
       }
       
-      user.avatar_url = avatarUrl;
+      user.avatar_url = avatarFilename; // Теперь храним только имя файла
     }
 
     await user.save();
     
     res.json({
       ...user.toJSON(),
-      avatar_url: user.avatar_url // Возвращаем полный URL
+      avatar_url: user.avatar_url // Возвращаем только имя файла
     });
 
   } catch (err) {

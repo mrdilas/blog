@@ -60,9 +60,17 @@ export default {
         content: '',
         image: null
       },
-      imagePreview: null
+      imagePreview: null,
+      baseUrl: '../server' // Добавляем baseUrl
     }
   },
+
+  computed: {
+    fullImageUrl() {
+      return (filename) => filename ? `${this.baseUrl}${filename}` : '';
+    }
+  },
+
   methods: {
     handleImageUpload(event) {
       const file = event.target.files[0];

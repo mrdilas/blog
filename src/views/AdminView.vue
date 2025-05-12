@@ -8,7 +8,7 @@
         <div v-for="user in users" :key="user.id" class="user-card">
           <div class="user-header">
             <div class="user-avatar">
-              <img v-if="user.avatar_url" :src="user.avatar_url" class="avatar" alt="Аватар">
+              <img v-if="user.avatar_url" :src="fullImageUrl(user.avatar_url)" class="avatar" alt="Аватар">
               <div v-else class="avatar-placeholder">
                 {{ getInitials(user.first_name, user.last_name) }}
               </div>
@@ -46,7 +46,7 @@
                 </button>
               </div>
               <h5 class="post-title">{{ post.title }}</h5>
-              <img v-if="post.image_url" :src="post.image_url" class="post-image" alt="Post image">
+              <img v-if="post.image_url" :src="fullImageUrl(post.image_url)" class="post-image" alt="Post image">
               <p class="post-content">{{ post.content }}</p>
             </div>
           </div>
@@ -61,7 +61,16 @@ export default {
   name: 'AdminView',
   data() {
     return {
-      users: []
+      users: [],
+      baseUrl: '../server' // Добавляем baseUrl
+    }
+  },
+  computed: {
+    getInitials() {
+      return (firstName, lastName) => (firstName.charAt(0) + lastName.charAt(0)).toUpperCase();
+    },
+    fullImageUrl() {
+      return (filename) => filename ? `${this.baseUrl}${filename}` : '';
     }
   },
   async created() {
