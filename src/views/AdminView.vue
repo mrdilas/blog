@@ -62,7 +62,7 @@ export default {
   data() {
     return {
       users: [],
-      baseUrl: '../server/uploads/' // Добавляем baseUrl
+      baseUrl: '../server/uploads/'
     }
   },
   computed: {
