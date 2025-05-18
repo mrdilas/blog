@@ -1,72 +1,77 @@
 <template>
-  <div class="profile-page">
-    <div class="profile-container">
-      <div class="profile-box">
-        <h2 class="profile-title">Профиль</h2>
+  <div class="container">
+  <div class="tg-profile-page">
+    <div class="tg-profile-container">
+      <div class="tg-profile-box">
+        <h2 class="tg-profile-title">Профиль</h2>
         
-        <div v-if="!isEditing" class="profile-info">
-          <div class="avatar-container">
-            <img v-if="fullAvatarUrl" :src="fullAvatarUrl" class="avatar" alt="Аватар">
-            <div v-else class="avatar-placeholder">
+        <div v-if="!isEditing" class="tg-profile-info">
+          <div class="tg-avatar-container">
+            <img v-if="fullAvatarUrl" :src="fullAvatarUrl" class="tg-avatar" alt="Аватар">
+            <div v-else class="tg-avatar-placeholder">
               {{ avatarInitials }}
             </div>
           </div>
-          <div class="info-row">
-            <span class="info-label">Логин:</span>
-            <span class="info-value">{{ user.login_entry }}</span>
+
+          <div class="tg-profile-details">
+            <div class="tg-detail-item">
+              <span class="tg-detail-label">Логин:</span>
+              <span class="tg-detail-value">{{ user.login_entry }}</span>
+            </div>
+            <div class="tg-detail-item">
+              <span class="tg-detail-label">Имя:</span>
+              <span class="tg-detail-value">{{ user.first_name }}</span>
+            </div>
+            <div class="tg-detail-item">
+              <span class="tg-detail-label">Фамилия:</span>
+              <span class="tg-detail-value">{{ user.last_name }}</span>
+            </div>
+            
+            <div v-if="user.bio" class="tg-detail-item tg-bio">
+              <span class="tg-detail-label">О себе:</span>
+              <p class="tg-detail-value">{{ user.bio }}</p>
+            </div>
           </div>
-          <div class="info-row">
-            <span class="info-label">Имя:</span>
-            <span class="info-value">{{ user.first_name }}</span>
-          </div>
-          <div class="info-row">
-            <span class="info-label">Фамилия:</span>
-            <span class="info-value">{{ user.last_name }}</span>
-          </div>
-          
-          <div v-if="user.bio" class="info-row bio-row">
-            <span class="info-label">О себе:</span>
-            <span class="info-value">{{ user.bio }}</span>
+
+          <div class="tg-profile-actions">
+            <button class="btn btn-primary" @click="startEditing">Редактировать</button>
+            <button class="btn btn-secondary" @click="goBack">Назад</button>
           </div>
         </div>
         
-        <form v-else @submit.prevent="saveProfile" class="edit-form" enctype="multipart/form-data">
-          <div class="avatar-container">
-            <img v-if="editForm.avatarPreview" :src="editForm.avatarPreview" class="avatar" alt="Аватар">
-            <div v-else class="avatar-placeholder">
+        <form v-else @submit.prevent="saveProfile" class="tg-edit-form" enctype="multipart/form-data">
+          <div class="tg-avatar-container">
+            <img v-if="editForm.avatarPreview" :src="editForm.avatarPreview" class="tg-avatar" alt="Аватар">
+            <div v-else class="tg-avatar-placeholder">
               {{ avatarInitials }}
             </div>
             <input 
               type="file" 
               accept="image/*"
               @change="handleAvatarUpload"
-              class="avatar-input"
+              class="tg-avatar-input"
             >
           </div>
-          <div class="form-group">
+          <div class="tg-form-group">
             <label for="first_name">Имя</label>
             <input id="first_name" v-model="editForm.first_name" type="text" required>
           </div>
-          <div class="form-group">
+          <div class="tg-form-group">
             <label for="last_name">Фамилия</label>
             <input id="last_name" v-model="editForm.last_name" type="text" required>
           </div>
-          <div class="form-group">
+          <div class="tg-form-group">
             <label for="bio">О себе</label>
             <textarea id="bio" v-model="editForm.bio" rows="3"></textarea>
           </div>
-          <div class="button-group">
-            <button type="submit" class="save-button">Сохранить</button>
-            <button type="button" class="cancel-button" @click="cancelEdit">Отмена</button>
+          <div class="tg-button-group">
+            <button type="submit" class="tg-save-button">Сохранить</button>
+            <button type="button" class="tg-cancel-button" @click="cancelEdit">Отмена</button>
           </div>
         </form>
-        
-        <button v-if="!isEditing" class="edit-button" @click="startEditing">Редактировать</button>
-        <button class="back-button" @click="goBack">Назад</button>
-
-        
       </div>
     </div>
+  </div>
   </div>
 </template>
 
@@ -91,13 +96,7 @@ export default {
         avatar: null,
         avatarPreview: ''
       },
-      baseUrl: '../server/uploads/',
-      debug: {
-        dbAvatarUrl: '',
-        fullComputedUrl: '',
-        fileExists: false,
-        serverResponse: null
-      }
+      baseUrl: '../server/uploads/'
     }
   },
   computed: {
@@ -105,23 +104,17 @@ export default {
       return (this.user.first_name.charAt(0) + this.user.last_name.charAt(0)).toUpperCase();
     },
     fullAvatarUrl() {
-      const url = this.user.avatar_url ? `${this.baseUrl}${this.user.avatar_url}` : '';
-      this.debug.fullComputedUrl = url; // Для отладки
-      return url;
+      return this.user.avatar_url ? `${this.baseUrl}${this.user.avatar_url}` : '';
     }
   },
   async created() {
-    console.log('=== ИНИЦИАЛИЗАЦИЯ КОМПОНЕНТА ===');
     await this.fetchUserData();
-    this.checkFileExists();
   },
   methods: {
     async fetchUserData() {
-      console.log('=== ЗАГРУЗКА ДАННЫХ ПОЛЬЗОВАТЕЛЯ ===');
       const userId = localStorage.getItem('userId');
       
       try {
-        console.log('Отправка запроса к серверу...');
         const response = await fetch(`http://localhost:3000/api/profile/${userId}`);
         
         if (!response.ok) {
@@ -129,14 +122,7 @@ export default {
         }
         
         const data = await response.json();
-        console.log('Ответ сервера:', data);
-        this.debug.serverResponse = data; // Сохраняем для отладки
-        
         this.user = data;
-        this.debug.dbAvatarUrl = data.avatar_url; // Сохраняем исходное значение из БД
-        
-        console.log('Данные пользователя загружены. avatar_url:', this.user.avatar_url);
-        console.log('Сформированный URL:', this.fullAvatarUrl);
         
       } catch (error) {
         console.error('Ошибка при загрузке профиля:', error);
@@ -144,28 +130,7 @@ export default {
       }
     },
     
-    async checkFileExists() {
-      if (!this.user.avatar_url) {
-        this.debug.fileExists = false;
-        return;
-      }
-      
-      try {
-        const url = this.fullAvatarUrl;
-        console.log('Проверка доступности файла по URL:', url);
-        
-        const response = await fetch(url, { method: 'HEAD' });
-        this.debug.fileExists = response.ok;
-        
-        console.log('Файл доступен:', response.ok);
-      } catch (error) {
-        console.error('Ошибка при проверке файла:', error);
-        this.debug.fileExists = false;
-      }
-    },
-    
     startEditing() {
-      console.log('=== РЕДАКТИРОВАНИЕ ПРОФИЛЯ ===');
       this.editForm = {
         first_name: this.user.first_name,
         last_name: this.user.last_name,
@@ -174,11 +139,9 @@ export default {
         avatarPreview: this.fullAvatarUrl
       };
       this.isEditing = true;
-      console.log('Режим редактирования активирован');
     },
     
     async saveProfile() {
-      console.log('=== СОХРАНЕНИЕ ПРОФИЛЯ ===');
       const userId = localStorage.getItem('userId');
       
       try {
@@ -188,11 +151,9 @@ export default {
         formData.append('bio', this.editForm.bio || '');
 
         if (this.editForm.avatar) {
-          console.log('Обнаружен новый файл аватара:', this.editForm.avatar.name);
           formData.append('avatar', this.editForm.avatar);
         }
 
-        console.log('Отправка данных на сервер...');
         const response = await fetch(`http://localhost:3000/api/profile/${userId}`, {
           method: 'PUT',
           body: formData
@@ -204,13 +165,10 @@ export default {
         }
 
         const updatedUser = await response.json();
-        console.log('Ответ сервера после сохранения:', updatedUser);
-        
         this.user = updatedUser;
         this.isEditing = false;
         
-        // Проверяем доступность нового файла
-        await this.checkFileExists();
+        localStorage.setItem('userName', `${this.user.first_name} ${this.user.last_name}`);
         
         alert('Профиль успешно обновлен!');
       } catch (error) {
@@ -222,10 +180,13 @@ export default {
     handleAvatarUpload(event) {
       const file = event.target.files[0];
       if (file) {
-        console.log('Выбран новый файл:', file.name, 'тип:', file.type, 'размер:', file.size);
         this.editForm.avatar = file;
         this.editForm.avatarPreview = URL.createObjectURL(file);
       }
+    },
+    
+    cancelEdit() {
+      this.isEditing = false;
     },
     
     goBack() {
@@ -236,192 +197,70 @@ export default {
 </script>
 
 <style scoped>
-.profile-page {
-  background-image: url('~@/assets/window_dg.jpg');
-  background-size: cover;
-  min-height: 100vh;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.profile-container {
-  width: 100%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.profile-box {
-  width: 350px;
-  padding: 30px;
-  background: rgba(255, 255, 255, 0.9);
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  text-align: center;
-}
-
-.profile-title {
-  margin-bottom: 24px;
-  color: #333;
-  font-size: 24px;
-}
-
-.profile-info {
-  margin-bottom: 20px;
-  text-align: left;
-}
-
-.info-row {
-  margin-bottom: 15px;
-  display: flex;
-  justify-content: space-between;
-  padding-bottom: 8px;
-  border-bottom: 1px solid #eee;
-}
-
-.info-label {
-  font-weight: 500;
-  color: #555;
-}
-
-.info-value {
-  color: #333;
-}
-
-.edit-button {
-  width: 100%;
-  padding: 12px;
-  background-color: #646cff;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  font-size: 16px;
-  cursor: pointer;
-  margin-top: 10px;
-}
-
-.edit-button:hover {
-  background-color: #535bf2;
-}
-
-.back-button {
-  width: 100%;
-  padding: 10px;
-  background-color: transparent;
-  color: #646cff;
-  border: none;
-  border-radius: 4px;
-  font-size: 14px;
-  cursor: pointer;
-  margin-top: 10px;
-  transition: color 0.3s;
-}
-
-.back-button:hover {
-  color: #535bf2;
-  text-decoration: underline;
-}
-
-.avatar-container {
+.tg-profile-info {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  margin-bottom: 20px;
+  gap: 1.5rem;
 }
 
-.avatar {
-  width: 100px;
-  height: 100px;
+.tg-avatar-container {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+
+.tg-avatar {
+  width: 120px;
+  height: 120px;
   border-radius: 50%;
   object-fit: cover;
-  margin-bottom: 10px;
+  border: 3px solid #4f46e5;
 }
 
-.avatar-placeholder {
-  width: 100px;
-  height: 100px;
+.tg-avatar-placeholder {
+  width: 120px;
+  height: 120px;
   border-radius: 50%;
-  background-color: #646cff;
+  background-color: #4f46e5;
   color: white;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 24px;
+  font-size: 2rem;
   font-weight: bold;
-  margin-bottom: 10px;
 }
 
-.avatar-input {
-  width: 100%;
-  padding: 8px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+.tg-profile-details {
+  background: #f9fafb;
+  padding: 1.5rem;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
 }
 
-.bio-row {
-  align-items: flex-start;
+.tg-detail-item {
+  margin-bottom: 1rem;
 }
 
-.edit-form {
+.tg-detail-label {
+  font-weight: 600;
+  color: #4f46e5;
+  display: block;
+  margin-bottom: 0.3rem;
+}
+
+.tg-detail-value {
+  font-size: 1rem;
+  color: #374151;
+}
+
+.tg-bio .tg-detail-value {
+  white-space: pre-line;
+  line-height: 1.6;
+}
+
+.tg-profile-actions {
   display: flex;
-  flex-direction: column;
-  gap: 15px;
-}
-
-.form-group {
-  display: flex;
-  flex-direction: column;
-}
-
-.form-group label {
-  margin-bottom: 5px;
-  font-weight: 500;
-  color: #555;
-}
-
-.form-group input,
-.form-group textarea {
-  padding: 8px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-}
-
-.form-group textarea {
-  resize: vertical;
-}
-
-.button-group {
-  display: flex;
-  gap: 10px;
-  margin-top: 10px;
-}
-
-.save-button {
-  flex: 1;
-  padding: 10px;
-  background-color: #4CAF50;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.save-button:hover {
-  background-color: #45a049;
-}
-
-.cancel-button {
-  flex: 1;
-  padding: 10px;
-  background-color: #f44336;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.cancel-button:hover {
-  background-color: #d32f2f;
+  gap: 1rem;
+  margin-top: 1.5rem;
 }
 </style>

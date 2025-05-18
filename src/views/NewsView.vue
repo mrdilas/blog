@@ -1,41 +1,61 @@
 <template>
-  <div class="news-page">
-    <div class="user-panel">
-      <div class="user-info">
+  <div class="container">
+  <div class="tg-news-page">
+    <div class="tg-user-panel">
+      <div class="tg-user-info">
         {{ userName }}
       </div>
-      <button class="profile-button" @click="goToProfile">Профиль</button>
-      <button class="add-news-button" @click="goToAddNews">Добавить новость</button>
-      <button class="logout-button" @click="handleLogout">Выйти</button>
+      <div class="tg-buttons-group">
+        <button class="tg-primary-button" @click="goToProfile">
+          <i class="fas fa-user"></i> Профиль
+        </button>
+        <button class="tg-primary-button" @click="goToAddNews">
+          <i class="fas fa-plus"></i> Добавить новость
+        </button>
+        <button class="tg-danger-button" @click="handleLogout">
+          <i class="fas fa-sign-out-alt"></i> Выйти
+        </button>
+      </div>
     </div>
     
-    <div class="news-container">
-      <div class="news-box">
-        <h2 class="news-title">Новости</h2>
-        
-        <div class="news-item" v-for="(news, index) in filteredNews" :key="index">
+    <div class="tg-news-container">
+      <h2 class="tg-news-title">Новости</h2>
+      
+      <div class="tg-news-list">
+        <div class="tg-news-item" v-for="(news, index) in filteredNews" :key="index">
           <div v-if="!news.isUserBanned">
-            <h3 class="news-item-title">{{ news.title }}</h3>
-            <img v-if="news.image_url" :src="news.image_url" class="news-image" alt="News image">
-            <p class="news-item-content">{{ news.content }}</p>
-            <div class="news-item-footer">
-              <span class="news-item-author">{{ news.author }}</span>
-              <span class="news-item-date">{{ formatDate(news.created_at) }}</span>
+            <div class="tg-news-header">
+              <h3 class="tg-news-item-title">{{ news.title }}</h3>
+              <span class="tg-news-item-date">{{ formatDate(news.created_at) }}</span>
+            </div>
+            
+            <img 
+              v-if="news.image_url" 
+              :src="news.image_url" 
+              class="tg-news-image" 
+              alt="News image"
+            >
+            
+            <p class="tg-news-item-content">{{ news.content }}</p>
+            
+            <div class="tg-news-footer">
+              <span class="tg-news-item-author">{{ news.author }}</span>
               <button 
                 v-if="isCurrentUserPost(news.user_id)"
                 @click="deletePost(news.id)"
-                class="delete-button"
+                class="tg-delete-button"
               >
                 Удалить
               </button>
             </div>
           </div>
-          <div v-else class="banned-user-message">
+          <div v-else class="tg-banned-user-message">
             Аккаунт пользователя заблокирован
           </div>
         </div>
       </div>
     </div>
+  </div>
   </div>
 </template>
 
@@ -70,7 +90,7 @@ export default {
             postUserId.toString() === this.userId.toString();
     },
     formatDate(dateString) {
-      const options = { year: 'numeric', month: 'long', day: 'numeric' };
+      const options = { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' };
       return new Date(dateString).toLocaleDateString('ru-RU', options);
     },
     goToProfile() {
@@ -137,171 +157,6 @@ export default {
   }
 }
 </script>
-
 <style scoped>
-.news-page {
-  background-image: url('~@/assets/window_dg.jpg');
-  background-size: cover;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding-top: 20px;
-}
 
-.user-panel {
-  width: 350px;
-  padding: 15px;
-  background: rgba(255, 255, 255, 0.9);
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  margin-bottom: 20px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.user-info {
-  font-weight: 500;
-  color: #333;
-}
-
-.profile-button {
-  padding: 8px 16px;
-  background-color: #646cff;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  font-size: 14px;
-  cursor: pointer;
-}
-
-.profile-button:hover {
-  background-color: #535bf2;
-}
-
-.news-container {
-  width: 100%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.news-box {
-  width: 350px;
-  padding: 30px;
-  background: rgba(255, 255, 255, 0.9);
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.news-title {
-  margin-bottom: 24px;
-  color: #333;
-  font-size: 24px;
-  text-align: center;
-}
-
-.news-item {
-  margin-bottom: 30px;
-  padding: 20px;
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-}
-
-.news-item:last-child {
-  border-bottom: none;
-  margin-bottom: 0;
-  padding-bottom: 0;
-}
-
-.news-item-title {
-  color: #333;
-  font-size: 18px;
-  margin-bottom: 8px;
-}
-
-.news-item-content {
-  color: #555;
-  font-size: 14px;
-  margin-bottom: 8px;
-  line-height: 1.5;
-}
-
-.news-item-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 10px;
-}
-
-.news-item-author {
-  color: #666;
-  font-size: 14px;
-}
-
-.news-item-date {
-  color: #888;
-  font-size: 12px;
-}
-
-.add-news-button {
-  padding: 8px 16px;
-  background-color: #4CAF50;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  font-size: 14px;
-  cursor: pointer;
-  margin-left: 10px;
-}
-
-.add-news-button:hover {
-  background-color: #45a049;
-}
-
-.news-image {
-  width: 100%;
-  max-height: 300px;
-  object-fit: cover;
-  border-radius: 4px;
-  margin: 10px 0;
-}
-
-.banned-user-message {
-  color: #ff4d4f;
-  font-style: italic;
-  padding: 20px;
-  text-align: center;
-}
-
-.delete-button {
-  padding: 4px 8px;
-  background-color: #ffebee;
-  color: #c62828;
-  border: none;
-  border-radius: 4px;
-  font-size: 12px;
-  cursor: pointer;
-  margin-left: 10px;
-}
-
-.delete-button:hover {
-  background-color: #ffcdd2;
-}
-
-.logout-button {
-  padding: 8px 16px;
-  background-color: #f44336;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  font-size: 14px;
-  cursor: pointer;
-}
-
-.logout-button:hover {
-  background-color: #d32f2f;
-}
 </style>

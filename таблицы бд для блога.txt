@@ -1,3 +1,7 @@
+CREATE DATABASE blog;
+
+USE blog;
+
 CREATE TABLE users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     login_entry VARCHAR(45) UNIQUE NOT NULL,
@@ -34,3 +38,9 @@ CREATE TABLE user_actions (
     performed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
+
+INSERT INTO users (login_entry, password_entry, first_name, last_name, role)
+VALUES ('admin','$2b$10$BFlQKLVxb5kxRWfNLTN80.MYs4up6tz36l93PRRqbPj1Ez6ZebE7m','Админов','Админ','admin');
+
+INSERT INTO users (login_entry, password_entry, first_name, last_name, role)
+VALUES ('user','$10$lOgAS6t/1z70c4ghMnvihexSi/OLIozUQGVVDeaMKRLOXWeHXhgBq','Первый','Пользователь','user');

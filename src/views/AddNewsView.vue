@@ -1,52 +1,57 @@
 <template>
-  <div class="add-news-page">
-    <div class="add-news-container">
-      <div class="add-news-box">
-        <h2 class="add-news-title">Добавить новость</h2>
+  <div class="container">
+  <div class="tg-add-news-page">
+    <div class="tg-add-news-container">
+      <div class="tg-add-news-box">
+        <h2 class="tg-add-news-title">Добавить новость</h2>
         
         <form @submit.prevent="handleSubmit">
-          <div class="input-group">
-            <label for="title">Заголовок</label>
+          <div class="tg-input-group">
             <input 
               id="title" 
               v-model="form.title" 
               type="text" 
-              placeholder="Введите заголовок"
+              placeholder="Заголовок"
+              class="tg-input"
               required
             >
           </div>
           
-          <div class="input-group">
-            <label for="content">Содержание</label>
+          <div class="tg-input-group">
             <textarea 
               id="content" 
               v-model="form.content" 
-              placeholder="Введите содержание новости"
-              rows="5"
+              placeholder="Содержание новости"
+              class="tg-textarea"
+              rows="8"
               required
             ></textarea>
           </div>
           
-          <div class="input-group">
-            <label for="image">Изображение</label>
-            <input 
-              id="image" 
-              type="file" 
-              accept="image/*"
-              @change="handleImageUpload"
-            >
-            <div v-if="imagePreview" class="image-preview">
+          <div class="tg-input-group">
+            <label class="tg-file-label">
+              <input 
+                type="file" 
+                accept="image/*"
+                @change="handleImageUpload"
+                class="tg-file-input"
+              >
+              <span class="tg-file-button">Выбрать изображение</span>
+              <span v-if="form.image" class="tg-file-name">{{ form.image.name }}</span>
+            </label>
+            <div v-if="imagePreview" class="tg-image-preview">
               <img :src="imagePreview" alt="Предпросмотр">
             </div>
           </div>
           
-          <div class="button-group">
-            <button type="submit" class="submit-button">Опубликовать</button>
-            <button type="button" class="cancel-button" @click="goBack">Отмена</button>
+          <div class="tg-button-group">
+            <button type="submit" class="tg-primary-button">Опубликовать</button>
+            <button type="button" class="tg-secondary-button" @click="goBack">Отмена</button>
           </div>
         </form>
       </div>
     </div>
+  </div>
   </div>
 </template>
 
@@ -61,16 +66,9 @@ export default {
         image: null
       },
       imagePreview: null,
-      baseUrl: '../server/uploads/' // Добавляем baseUrl
+      baseUrl: '../server/uploads/'
     }
   },
-
-  computed: {
-    fullImageUrl() {
-      return (filename) => filename ? `${this.baseUrl}${filename}` : '';
-    }
-  },
-
   methods: {
     handleImageUpload(event) {
       const file = event.target.files[0];
@@ -84,7 +82,7 @@ export default {
         const formData = new FormData();
         formData.append('title', this.form.title);
         formData.append('content', this.form.content);
-        formData.append('userId', localStorage.getItem('userId')); // Добавляем userId
+        formData.append('userId', localStorage.getItem('userId'));
         if (this.form.image) {
           formData.append('image', this.form.image);
         }
@@ -114,104 +112,20 @@ export default {
 </script>
 
 <style scoped>
-.add-news-page {
-  background-image: url('~@/assets/window_dg.jpg');
-  background-size: cover;
-  min-height: 100vh;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.add-news-container {
-  width: 100%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.add-news-box {
-  width: 500px;
-  padding: 30px;
-  background: rgba(255, 255, 255, 0.9);
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.add-news-title {
-  margin-bottom: 24px;
-  color: #333;
-  font-size: 24px;
-  text-align: center;
-}
-
-.input-group {
-  margin-bottom: 20px;
-}
-
-.input-group label {
-  display: block;
-  margin-bottom: 8px;
-  font-weight: 500;
-  color: #555;
-}
-
-.input-group input,
-.input-group textarea {
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 16px;
-  box-sizing: border-box;
-}
-
-.input-group textarea {
-  resize: vertical;
-}
-
-.button-group {
-  display: flex;
-  gap: 10px;
-}
-
-.submit-button {
-  flex: 1;
-  padding: 12px;
-  background-color: #4CAF50;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  font-size: 16px;
-  cursor: pointer;
-}
-
-.submit-button:hover {
-  background-color: #45a049;
-}
-
-.cancel-button {
-  flex: 1;
-  padding: 12px;
-  background-color: #f44336;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  font-size: 16px;
-  cursor: pointer;
-}
-
-.cancel-button:hover {
-  background-color: #d32f2f;
-}
-
-.image-preview {
-  margin-top: 10px;
-}
-
-.image-preview img {
-  max-width: 100%;
+/* Добавьте в стили AddNewsView */
+.tg-image-preview {
+  max-width: 300px;
   max-height: 200px;
-  border-radius: 4px;
+  margin: 1rem 0;
+  overflow: hidden;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
 }
+
+.tg-image-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 </style>

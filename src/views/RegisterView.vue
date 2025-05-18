@@ -1,4 +1,5 @@
 <template>
+  <div class="container">
   <div class="register-page">
     <div class="register-container">
       <form autocomplete="off">
@@ -56,6 +57,7 @@
         </div>
       </form>
     </div>
+  </div>
   </div>
 </template>
 
@@ -132,97 +134,6 @@ export default {
   }
 }
 </script>
-
 <style scoped>
-.error-message {
-  color: #ff4d4f;
-  font-size: 12px;
-  margin-top: 4px;
-  display: block;
-}
 
-.register-page {
-  background-image: url('~@/assets/window_dg.jpg');
-  background-size: cover;
-  min-height: 100vh;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.register-container {
-  width: 100%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.register-box {
-  width: 350px;
-  padding: 30px;
-  background: rgba(255, 255, 255, 0.9);
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  text-align: center;
-}
-
-.register-title {
-  margin-bottom: 24px;
-  color: #333;
-  font-size: 24px;
-}
-
-.input-group {
-  margin-bottom: 20px;
-  text-align: left;
-}
-
-.input-group label {
-  display: block;
-  margin-bottom: 8px;
-  font-weight: 500;
-  color: #555;
-}
-
-.register-input {
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 16px;
-  box-sizing: border-box;
-}
-
-.register-button {
-  width: 100%;
-  padding: 12px;
-  background-color: #646cff;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  font-size: 16px;
-  cursor: pointer;
-  margin-top: 10px;
-}
-
-.register-button:hover {
-    background-color: #535bf2;
-  }
-
-.exit-button {
-    width: 100%;
-    padding: 10px;
-    background-color: transparent;
-    color: #646cff;
-    border: none;
-    border-radius: 4px;
-    font-size: 14px;
-    cursor: pointer;
-    transition: color 0.3s;
-  }
-  
-  .exit-button:hover {
-    color: #535bf2;
-    text-decoration: underline;
-  }
 </style>
